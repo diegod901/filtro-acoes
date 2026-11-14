@@ -1,0 +1,4 @@
+__pycache__/
+robo/ultima_execucao.log
+*.pyc
+.claude/

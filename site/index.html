@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Filtro de Ações</title>
+<meta name="description" content="Filtro de ações dos EUA: lucro consecutivo, valor de mercado, tendência de alta e recuo no diário e no semanal.">
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Filtro">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+:root{
+  --bg:#f6f7f9; --card:#ffffff; --ink:#0f172a; --muted:#5b6475; --line:#e3e6ec;
+  --acc:#2563eb; --acc-soft:#e8efff; --up:#0f8a4a; --up-soft:#e3f5ea; --down:#c2410c; --down-soft:#fdece3;
+  --warn:#a16207; --warn-soft:#fdf4dc; --chip:#eef1f5; --shadow:0 1px 2px rgba(15,23,42,.06),0 4px 14px rgba(15,23,42,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#0b1120;--card:#121a2b;--ink:#e6eaf2;--muted:#94a0b8;--line:#22304a;--acc:#6b9bff;--acc-soft:#16264a;
+    --up:#3ecf86;--up-soft:#0f2e22;--down:#ff8a5c;--down-soft:#341b12;--warn:#f2c14e;--warn-soft:#2f2712;--chip:#1a2438;
+    --shadow:none}
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(env(safe-area-inset-top) + 12px) 16px 10px;border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;max-width:1180px;margin:0 auto}
+h1{font-size:20px;margin:0;letter-spacing:-.01em}
+.stamp{color:var(--muted);font-size:12.5px;text-align:right}
+main{max-width:1180px;margin:0 auto;padding:12px 16px calc(env(safe-area-inset-bottom) + 40px)}
+.layout{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:900px){.layout{grid-template-columns:300px 1fr;align-items:start}.filters{position:sticky;top:76px}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.filters{padding:14px}
+.fhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.fhead h2{font-size:15px;margin:0}
+.toggle-f{display:none}
+@media (max-width:899px){.toggle-f{display:inline-block}.filters.closed .fbody{display:none}}
+.grp{padding:12px 0;border-top:1px solid var(--line)}
+.grp:first-child{border-top:0;padding-top:4px}
+.lbl{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;display:block}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input[type=number],input[type=search],select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-height:40px}
+input[type=number]{width:84px}
+input[type=search]{width:100%}
+select{width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:999px;padding:7px 12px;font:inherit;font-size:13.5px;cursor:pointer;min-height:36px}
+.chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.sw{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;cursor:pointer}
+.sw input{appearance:none;width:44px;height:26px;border-radius:999px;background:var(--line);position:relative;flex:none;cursor:pointer;transition:.15s}
+.sw input::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.sw input:checked{background:var(--acc)}
+.sw input:checked::after{left:21px}
+.hint{font-size:12.5px;color:var(--muted);margin-top:6px}
+.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:8px 12px;cursor:pointer;min-height:38px}
+.results .bar{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.count{font-weight:650}
+.bar select{width:auto}
+.list{list-style:none;margin:0;padding:0}
+.item{border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.sum{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:12px 14px;cursor:pointer}
+.sum:hover{background:var(--chip)}
+.tk{font-weight:700;font-size:16px;letter-spacing:.01em}
+.nm{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw}
+@media (min-width:900px){.nm{max-width:420px}}
+.px{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.chg{font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums}
+.pos{color:var(--up)}.neg{color:var(--down)}
+.tags{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.tag{font-size:12px;padding:3px 8px;border-radius:7px;background:var(--chip);color:var(--muted);font-variant-numeric:tabular-nums}
+.tag.up{background:var(--up-soft);color:var(--up)}
+.tag.rc{background:var(--warn-soft);color:var(--warn)}
+.tag.no{background:var(--down-soft);color:var(--down)}
+.det{display:none;padding:0 14px 14px}
+.item.open .det{display:block}
+.dgrid{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:640px){.dgrid{grid-template-columns:1fr 1fr 1fr}}
+.box{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13.5px}
+.box h3{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0 0 6px}
+.kv{display:flex;justify-content:space-between;gap:8px;font-variant-numeric:tabular-nums}
+.kv span:first-child{color:var(--muted)}
+.links{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.links a{color:var(--acc);text-decoration:none;font-weight:600;font-size:14px;padding:8px 12px;border-radius:10px;background:var(--acc-soft)}
+.empty{padding:28px 16px;text-align:center;color:var(--muted)}
+.more{display:block;margin:12px auto}
+.how{margin-top:14px;padding:14px 16px;font-size:13.5px;color:var(--muted)}
+.how h2{font-size:15px;color:var(--ink);margin:0 0 6px}
+.how li{margin:4px 0}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <h1>Filtro de Ações</h1>
+    <div class="stamp" id="stamp">carregando…</div>
+  </div>
+</header>
+<main>
+<div class="layout">
+  <aside class="panel filters" id="filters">
+    <div class="fhead"><h2>Filtros</h2><button class="btn toggle-f" id="toggleF">Mostrar</button></div>
+    <div class="fbody">
+      <div class="grp">
+        <span class="lbl">Valor de mercado (US$ bi)</span>
+        <div class="chips" id="capPresets">
+          <button class="chip" data-min="2" data-max="10">Mid cap 2–10</button>
+          <button class="chip" data-min="10" data-max="">Grandes 10+</button>
+          <button class="chip" data-min="0.3" data-max="2">Pequenas 0,3–2</button>
+          <button class="chip" data-min="" data-max="">Todas</button>
+        </div>
+        <div class="row" style="margin-top:8px"><input type="number" id="capMin" step="0.1" min="0" placeholder="de"> <span>até</span> <input type="number" id="capMax" step="0.1" min="0" placeholder="sem limite"></div>
+      </div>
+      <div class="grp">
+        <label class="sw"><span>Lucro nos 3 últimos anos e nos últimos 12 meses</span><input type="checkbox" id="lucro"></label>
+      </div>
+      <div class="grp">
+        <span class="lbl">Tendência de alta (topos e fundos subindo)</span>
+        <label class="sw"><span>No diário</span><input type="checkbox" id="tendD"></label>
+        <label class="sw"><span>No semanal</span><input type="checkbox" id="tendW"></label>
+      </div>
+      <div class="grp">
+        <span class="lbl">Fazendo recuo</span>
+        <div class="chips" id="recuoChips">
+          <button class="chip" data-v="off">Tanto faz</button>
+          <button class="chip" data-v="D">Diário</button>
+          <button class="chip" data-v="W">Semanal</button>
+          <button class="chip" data-v="any">Um dos dois</button>
+          <button class="chip" data-v="both">Os dois</button>
+        </div>
+        <div class="row" style="margin-top:8px"><span>Recuo de</span><input type="number" id="pMin" min="0" max="300" step="5" placeholder="0"><span>a</span><input type="number" id="pMax" min="0" max="300" step="5" placeholder="100"><span>% da perna</span></div>
+        <div class="hint">Recuo = preço abaixo do último topo e acima do último fundo. % = quanto devolveu da última subida.</div>
+      </div>
+      <div class="grp">
+        <span class="lbl">Setor</span>
+        <select id="setor"><option value="">Todos</option></select>
+      </div>
+      <div class="grp">
+        <span class="lbl">País da empresa</span>
+        <div class="chips" id="paisChips">
+          <button class="chip" data-v="">Todos</button>
+          <button class="chip" data-v="EUA">EUA</button>
+          <button class="chip" data-v="fora">Fora dos EUA</button>
+        </div>
+      </div>
+      <div class="grp">
+        <span class="lbl">Buscar</span>
+        <input type="search" id="busca" placeholder="Ticker ou nome" autocomplete="off" autocapitalize="characters">
+      </div>
+      <div class="grp row">
+        <button class="btn" id="reset">Voltar ao padrão</button>
+      </div>
+    </div>
+  </aside>
+
+  <section>
+    <div class="panel results">
+      <div class="bar">
+        <span class="count" id="count">—</span>
+        <select id="ordem" aria-label="Ordenar">
+          <option value="cap">Maior valor de mercado</option>
+          <option value="capAsc">Menor valor de mercado</option>
+          <option value="recD">Menor recuo no diário</option>
+          <option value="recW">Menor recuo no semanal</option>
+          <option value="chg">Maior alta no dia</option>
+          <option value="tk">Ticker A–Z</option>
+        </select>
+      </div>
+      <ul class="list" id="list"></ul>
+      <button class="btn more" id="more" hidden>Mostrar mais</button>
+    </div>
+    <div class="panel how">
+      <h2>Como o filtro funciona</h2>
+      <ul>
+        <li><b>Lucro:</b> lucro líquido acima de zero em cada um dos 3 últimos anos fiscais e na soma dos últimos 12 meses (balanços enviados à SEC).</li>
+        <li><b>Topo e fundo:</b> candle cuja máxima (ou mínima) é maior (ou menor) que a dos 2 candles de cada lado. Só conta quando já há 2 candles depois dele.</li>
+        <li><b>Tendência de alta:</b> o último topo acima do topo anterior, o último fundo acima do fundo anterior e o preço acima do último fundo.</li>
+        <li><b>Recuo:</b> o preço está abaixo do último topo e acima do último fundo. O % mostra quanto ele devolveu da subida que levou ao último topo (0% = no topo, 100% = de volta ao fundo de onde a subida começou).</li>
+        <li><b>Semanal:</b> montado a partir do diário, com a semana fechando na sexta. A semana corrente entra como candle em formação.</li>
+        <li><b>Valor de mercado:</b> número de ações informado à SEC × último preço. Ações da NYSE, Nasdaq e CBOE a partir de US$ 300 mi.</li>
+        <li>Dados atualizados todo dia depois do fechamento. Não é recomendação de investimento.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+</main>
+
+<script>
+const PADRAO = {capMin:2, capMax:10, lucro:true, tendD:true, tendW:true, recuo:'any', pMin:'', pMax:'', setor:'', pais:'', busca:'', ordem:'cap'};
+let F = carregar(), DADOS = [], vistos = 60;
+const $ = id => document.getElementById(id);
+const fmt = (v, d=2) => v == null ? '–' : v.toLocaleString('pt-BR', {minimumFractionDigits:d, maximumFractionDigits:d});
+const pct = v => v == null ? '–' : (v*100).toLocaleString('pt-BR',{maximumFractionDigits:0}) + '%';
+const mi = v => v == null ? '–' : (Math.abs(v) >= 1000 ? fmt(v/1000,1)+' bi' : fmt(v,0)+' mi');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function carregar(){ try { return {...PADRAO, ...JSON.parse(localStorage.getItem('filtro') || '{}')}; } catch(e){ return {...PADRAO}; } }
+function salvar(){ try { localStorage.setItem('filtro', JSON.stringify(F)); } catch(e){} }
+
+function passa(a){
+  const mn = parseFloat(F.capMin), mx = parseFloat(F.capMax);
+  if (!isNaN(mn) && !(a.cap >= mn)) return false;
+  if (!isNaN(mx) && !(a.cap <= mx)) return false;
+  if (F.lucro && a.lucro !== true) return false;
+  if (F.tendD && !(a.D && a.D.tend)) return false;
+  if (F.tendW && !(a.W && a.W.tend)) return false;
+  const pmn = parseFloat(F.pMin)/100, pmx = parseFloat(F.pMax)/100;
+  const rec = e => e && e.recuo && (isNaN(pmn) || e.pct >= pmn) && (isNaN(pmx) || e.pct <= pmx);
+  if (F.recuo === 'D' && !rec(a.D)) return false;
+  if (F.recuo === 'W' && !rec(a.W)) return false;
+  if (F.recuo === 'any' && !(rec(a.D) || rec(a.W))) return false;
+  if (F.recuo === 'both' && !(rec(a.D) && rec(a.W))) return false;
+  if (F.setor && a.setor !== F.setor) return false;
+  if (F.pais === 'EUA' && a.pais !== 'EUA') return false;
+  if (F.pais === 'fora' && a.pais === 'EUA') return false;
+  if (F.busca){ const q = F.busca.trim().toUpperCase(); if (q && !a.t.toUpperCase().startsWith(q) && !a.n.toUpperCase().includes(q)) return false; }
+  return true;
+}
+
+const ORD = {
+  cap:(a,b)=>(b.cap||0)-(a.cap||0), capAsc:(a,b)=>(a.cap||0)-(b.cap||0),
+  recD:(a,b)=>r(a.D)-r(b.D), recW:(a,b)=>r(a.W)-r(b.W),
+  chg:(a,b)=>(b.var1d||0)-(a.var1d||0), tk:(a,b)=>a.t.localeCompare(b.t)
+};
+function r(e){ return e && e.recuo && e.pct != null ? e.pct : 9; }
+
+function tags(a){
+  const t = [];
+  for (const [k, nome] of [['D','Diário'],['W','Semanal']]){
+    const e = a[k]; if (!e) continue;
+    if (e.tend) t.push(`<span class="tag up">${nome}: alta</span>`);
+    if (e.recuo) t.push(`<span class="tag rc">${nome}: recuo ${pct(e.pct)}</span>`);
+  }
+  t.push(a.lucro === true ? '<span class="tag up">Lucro 3a+12m</span>' : a.lucro === false ? '<span class="tag no">Sem lucro consecutivo</span>' : '<span class="tag">Lucro: sem dados</span>');
+  t.push(`<span class="tag">US$ ${fmt(a.cap, a.cap < 10 ? 2 : 1)} bi</span>`, `<span class="tag">${esc(a.setor)}</span>`);
+  return t.join('');
+}
+function caixa(e, nome){
+  if (!e || e.topo == null) return `<div class="box"><h3>${nome}</h3>Sem topos e fundos suficientes.</div>`;
+  return `<div class="box"><h3>${nome}</h3>
+    <div class="kv"><span>Último topo</span><span>${fmt(e.topo)} <small>(${e.dt_topo.slice(8,10)}/${e.dt_topo.slice(5,7)})</small></span></div>
+    <div class="kv"><span>Topo anterior</span><span>${fmt(e.topo_ant)}</span></div>
+    <div class="kv"><span>Último fundo</span><span>${fmt(e.fundo)} <small>(${e.dt_fundo.slice(8,10)}/${e.dt_fundo.slice(5,7)})</small></span></div>
+    <div class="kv"><span>Fundo anterior</span><span>${fmt(e.fundo_ant)}</span></div>
+    <div class="kv"><span>Recuo da perna</span><span>${e.recuo ? pct(e.pct) : (e.pct < 0 ? 'acima do topo' : 'abaixo do fundo')}</span></div></div>`;
+}
+function item(a){
+  const anos = a.anos.map(([y,v]) => `<div class="kv"><span>${y}</span><span class="${v>0?'pos':'neg'}">${mi(v)}</span></div>`).join('');
+  const sym = encodeURIComponent(a.t.replace('.', '-'));
+  return `<li class="item"><div class="sum">
+      <div><div class="tk">${esc(a.t)}</div><div class="nm">${esc(a.n)}</div></div>
+      <div><div class="px">US$ ${fmt(a.preco)}</div><div class="chg ${a.var1d>=0?'pos':'neg'}">${a.var1d>=0?'+':''}${fmt(a.var1d*100,1)}%</div></div>
+      <div class="tags">${tags(a)}</div></div>
+    <div class="det"><div class="dgrid">${caixa(a.D,'Diário')}${caixa(a.W,'Semanal')}
+      <div class="box"><h3>Lucro líquido</h3>${anos || 'Sem balanços na SEC.'}
+        <div class="kv"><span>Últimos 12 meses</span><span class="${a.ttm>0?'pos':'neg'}">${mi(a.ttm)}</span></div>
+        <div class="hint">${esc(a.base || '')}</div></div></div>
+      <div class="hint">${esc(a.ind)} · ${esc(a.pais)}</div>
+      <div class="links"><a href="https://www.tradingview.com/chart/?symbol=${sym}" target="_blank" rel="noopener">Gráfico (TradingView)</a>
+        <a href="https://finance.yahoo.com/quote/${sym}" target="_blank" rel="noopener">Yahoo Finance</a></div></div></li>`;
+}
+
+function render(){
+  const res = DADOS.filter(passa).sort(ORD[F.ordem] || ORD.cap);
+  $('count').textContent = res.length.toLocaleString('pt-BR') + (res.length === 1 ? ' ação' : ' ações');
+  $('list').innerHTML = res.length ? res.slice(0, vistos).map(item).join('') :
+    '<li class="empty">Nenhuma ação passa em todos os filtros. Tente afrouxar um deles.</li>';
+  $('more').hidden = res.length <= vistos;
+  syncUI(); salvar();
+}
+
+function syncUI(){
+  $('capMin').value = F.capMin; $('capMax').value = F.capMax;
+  $('lucro').checked = F.lucro; $('tendD').checked = F.tendD; $('tendW').checked = F.tendW;
+  $('pMin').value = F.pMin; $('pMax').value = F.pMax; $('setor').value = F.setor; $('ordem').value = F.ordem;
+  if (document.activeElement !== $('busca')) $('busca').value = F.busca;
+  document.querySelectorAll('#capPresets .chip').forEach(b => b.classList.toggle('on', String(b.dataset.min) === String(F.capMin) && String(b.dataset.max) === String(F.capMax)));
+  document.querySelectorAll('#recuoChips .chip').forEach(b => b.classList.toggle('on', b.dataset.v === F.recuo));
+  document.querySelectorAll('#paisChips .chip').forEach(b => b.classList.toggle('on', b.dataset.v === F.pais));
+}
+
+function ligar(){
+  const set = (k, v) => { F[k] = v; vistos = 60; render(); };
+  $('capMin').addEventListener('input', e => set('capMin', e.target.value));
+  $('capMax').addEventListener('input', e => set('capMax', e.target.value));
+  $('pMin').addEventListener('input', e => set('pMin', e.target.value));
+  $('pMax').addEventListener('input', e => set('pMax', e.target.value));
+  for (const k of ['lucro','tendD','tendW']) $(k).addEventListener('change', e => set(k, e.target.checked));
+  $('setor').addEventListener('change', e => set('setor', e.target.value));
+  $('ordem').addEventListener('change', e => set('ordem', e.target.value));
+  $('busca').addEventListener('input', e => set('busca', e.target.value));
+  document.querySelectorAll('#capPresets .chip').forEach(b => b.addEventListener('click', () => { F.capMin = b.dataset.min; F.capMax = b.dataset.max; vistos = 60; render(); }));
+  document.querySelectorAll('#recuoChips .chip').forEach(b => b.addEventListener('click', () => set('recuo', b.dataset.v)));
+  document.querySelectorAll('#paisChips .chip').forEach(b => b.addEventListener('click', () => set('pais', b.dataset.v)));
+  $('reset').addEventListener('click', () => { F = {...PADRAO}; vistos = 60; render(); });
+  $('more').addEventListener('click', () => { vistos += 60; render(); });
+  $('list').addEventListener('click', e => { const s = e.target.closest('.sum'); if (s) s.parentElement.classList.toggle('open'); });
+  const fl = $('filters');
+  if (window.matchMedia('(max-width: 899px)').matches) { fl.classList.add('closed'); }
+  $('toggleF').addEventListener('click', () => { fl.classList.toggle('closed'); $('toggleF').textContent = fl.classList.contains('closed') ? 'Mostrar' : 'Esconder'; });
+}
+
+fetch('data.json', {cache:'no-cache'}).then(r => r.json()).then(d => {
+  DADOS = d.acoes;
+  const m = d.meta, p = m.pregao.split('-');
+  $('stamp').innerHTML = `Pregão de ${p[2]}/${p[1]}/${p[0]}<br>${m.n.toLocaleString('pt-BR')} ações`;
+  const setores = [...new Set(DADOS.map(a => a.setor))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  $('setor').insertAdjacentHTML('beforeend', setores.map(s => `<option>${esc(s)}</option>`).join(''));
+  ligar(); render();
+}).catch(() => { $('stamp').textContent = 'Erro ao carregar os dados'; $('list').innerHTML = '<li class="empty">Não consegui carregar os dados. Tente recarregar a página.</li>'; });
+</script>
+</body>
+</html>

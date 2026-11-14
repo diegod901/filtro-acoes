@@ -253,12 +253,28 @@ def pivos(h, l, n=2):
     return topos, fundos
 
 
+def alternar(topos, fundos, h, l):
+    """Lê topos e fundos como no gráfico: sempre alternando. Dois fundos seguidos sem topo no meio são a mesma
+    perna de queda e viram um só (o mais baixo); dois topos seguidos viram um só (o mais alto).
+    Sem isso, um fundo um pouco acima do outro na mesma queda era lido como 'fundo ascendente' (erro de 14/11)."""
+    ev = sorted([(i, 1) for i in topos] + [(i, 0) for i in fundos])   # no mesmo candle, o fundo vem antes
+    seq = []
+    for i, tipo in ev:
+        if seq and seq[-1][1] == tipo:
+            j = seq[-1][0]
+            if (tipo == 1 and h[i] >= h[j]) or (tipo == 0 and l[i] <= l[j]):
+                seq[-1] = (i, tipo)
+            continue
+        seq.append((i, tipo))
+    return [i for i, t in seq if t == 1], [i for i, t in seq if t == 0]
+
+
 def estrutura(df):
     """Tendência e recuo num gráfico (df com High, Low, Close)."""
     h, l, c = (df[k].to_numpy(float) for k in ("High", "Low", "Close"))
     if len(c) < 20:
         return None
-    tp, fd = pivos(h, l)
+    tp, fd = alternar(*pivos(h, l), h, l)
     if len(tp) < 2 or len(fd) < 2:
         return {"tend": False, "recuo": False}
     t1, t2, f1, f2 = h[tp[-1]], h[tp[-2]], l[fd[-1]], l[fd[-2]]
@@ -271,6 +287,17 @@ def estrutura(df):
             "topo": round(float(t1), 2), "topo_ant": round(float(t2), 2),
             "fundo": round(float(f1), 2), "fundo_ant": round(float(f2), 2),
             "dt_topo": str(df.index[tp[-1]].date()), "dt_fundo": str(df.index[fd[-1]].date())}
+
+
+def limpar(x):
+    """O Yahoo às vezes traz uma mínima/máxima absurda (ex.: LCID em 17/07/2026, mínima de 2,37 num dia entre 5,6 e
+    7,6). Mínima mais de 25% abaixo do menor entre abertura e fechamento (ou máxima 33% acima do maior) é tratada
+    como erro de dado e trocada pelo corpo do candle."""
+    x = x.copy()
+    lo, hi = x[["Open", "Close"]].min(axis=1), x[["Open", "Close"]].max(axis=1)
+    x["Low"] = x["Low"].where(x["Low"] >= 0.75 * lo, lo)
+    x["High"] = x["High"].where(x["High"] <= 1.33 * hi, hi)
+    return x
 
 
 def analisar_precos(yahoo):
@@ -290,6 +317,7 @@ def analisar_precos(yahoo):
                 continue
             if len(x) < 60:
                 continue
+            x = limpar(x)
             sem = x.resample("W-FRI").agg({"Open": "first", "High": "max", "Low": "min", "Close": "last"}).dropna()
             out[t] = {"preco": round(float(x["Close"].iloc[-1]), 2),
                       "var1d": round(float(x["Close"].iloc[-1] / x["Close"].iloc[-2] - 1), 4),

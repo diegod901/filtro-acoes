@@ -9,12 +9,21 @@ on:
         description: "Buscar de novo os dados da SEC (lucros, ações, setor)"
         type: boolean
         default: false
+  push:
+    branches: [main]            # mudança no código ou no site: só republica
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: filtro
+  cancel-in-progress: false
 
 jobs:
   atualizar:
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
@@ -33,3 +42,21 @@ jobs:
           git add site/data.json robo/cache/sec.json
           git diff --cached --quiet || git commit -m "Dados do pregão $(date -u +%F)"
           git push
+
+  publicar:
+    needs: atualizar
+    if: always() && (needs.atualizar.result == 'success' || needs.atualizar.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

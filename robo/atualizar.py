@@ -3,7 +3,8 @@
 Regras definidas pelo Diego:
   Lucro consecutivo: lucro líquido > 0 nos 3 últimos anos fiscais E nos últimos 12 meses.
   Mid cap: valor de mercado de US$ 2 a 10 bi (o app deixa mudar a faixa).
-  Tendência de alta: os 2 últimos fundos ascendentes e os 2 últimos topos ascendentes, e o preço acima do último fundo.
+  Tendência de alta: os 2 últimos fundos ascendentes e os 2 últimos topos ascendentes (cada um pelo menos 1% acima
+  do anterior), e o preço acima do último fundo.
   Recuo: preço abaixo do último topo e acima do último fundo; % = quanto devolveu da última perna de alta.
   Diário e semanal.
 Topo/fundo = candle cuja máxima (mínima) é maior (menor) que as dos 2 candles de cada lado (fractal de 5 candles).
@@ -37,6 +38,7 @@ CACHE = RAIZ / "robo" / "cache"
 SITE = RAIZ / "site"
 UA = {"User-Agent": "filtro-acoes app (contato: filtro.acoes.app@gmail.com)", "Accept": "application/json"}
 CAP_MIN = 0.3e9                      # universo: valor de mercado a partir de US$ 300 mi
+MARGEM = 1.01                        # topo/fundo só é "mais alto" se passar o anterior em pelo menos 1% (Diego, 14/11)
 BOLSAS = {"Nasdaq", "NYSE", "CBOE"}
 LUCRO = [("us-gaap", "NetIncomeLoss"), ("us-gaap", "NetIncomeLossAvailableToCommonStockholdersBasic"),
          ("us-gaap", "ProfitLoss"),                # inclui sócios minoritários: o robô desconta a parte deles
@@ -282,7 +284,7 @@ def estrutura(df):
     antes = [i for i in fd if i < tp[-1]]          # perna de alta: do fundo antes do último topo até o topo
     base = l[antes[-1]] if antes else f1
     pct = (t1 - preco) / (t1 - base) if t1 > base else None
-    return {"tend": bool(t1 > t2 and f1 > f2 and preco > f1), "recuo": bool(f1 < preco < t1),
+    return {"tend": bool(t1 >= t2 * MARGEM and f1 >= f2 * MARGEM and preco > f1), "recuo": bool(f1 < preco < t1),
             "pct": None if pct is None else round(float(pct), 3),
             "topo": round(float(t1), 2), "topo_ant": round(float(t2), 2),
             "fundo": round(float(f1), 2), "fundo_ant": round(float(f2), 2),

@@ -177,9 +177,9 @@ select{width:100%}
       <ul>
         <li><b>Lucro:</b> lucro líquido acima de zero em cada um dos 3 últimos anos fiscais e na soma dos últimos 12 meses (balanços enviados à SEC).</li>
         <li><b>Topo e fundo:</b> candle cuja máxima (ou mínima) é maior (ou menor) que a dos 2 candles de cada lado. Só conta quando já há 2 candles depois dele.</li>
-        <li><b>Tendência de alta:</b> o último topo acima do topo anterior, o último fundo acima do fundo anterior e o preço acima do último fundo.</li>
+        <li><b>Tendência de alta:</b> o último topo pelo menos 1% acima do topo anterior, o último fundo pelo menos 1% acima do fundo anterior, e o preço acima do último fundo. Topos e fundos são lidos alternando, como no gráfico: dois fundos seguidos sem topo no meio contam como um só (o mais baixo).</li>
         <li><b>Recuo:</b> o preço está abaixo do último topo e acima do último fundo. O % mostra quanto ele devolveu da subida que levou ao último topo (0% = no topo, 100% = de volta ao fundo de onde a subida começou).</li>
-        <li><b>Semanal:</b> montado a partir do diário, com a semana fechando na sexta. A semana corrente entra como candle em formação.</li>
+        <li><b>Semanal:</b> montado a partir do diário, com a semana fechando na sexta. A semana corrente entra como candle em formação. Mínima ou máxima absurda do Yahoo (mais de 25% fora do corpo do candle) é tratada como erro de dado.</li>
         <li><b>Valor de mercado:</b> número de ações informado à SEC × último preço. Ações da NYSE, Nasdaq e CBOE a partir de US$ 300 mi.</li>
         <li>Dados atualizados todo dia depois do fechamento. Não é recomendação de investimento.</li>
       </ul>

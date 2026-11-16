@@ -281,14 +281,20 @@ def estrutura(df):
         return {"tend": False, "recuo": False}
     t1, t2, f1, f2 = h[tp[-1]], h[tp[-2]], l[fd[-1]], l[fd[-2]]
     preco = c[-1]
-    antes = [i for i in fd if i < tp[-1]]          # perna de alta: do fundo antes do último topo até o topo
+    # topo atual = máxima mais alta desde o último topo confirmado, contando os candles que ainda não confirmaram
+    # (ex.: LKFT fez máxima de 35,54 em 12/11 e o robô seguia medindo do topo de 34,49 de 05/11 - erro de 15/11)
+    ia = tp[-1] + int(h[tp[-1]:].argmax())
+    topo = h[ia]
+    topo_ant = t1 if ia != tp[-1] else t2
+    antes = [i for i in fd if i < ia]              # perna de alta: do último fundo antes do topo até o topo
     base = l[antes[-1]] if antes else f1
-    pct = (t1 - preco) / (t1 - base) if t1 > base else None
-    return {"tend": bool(t1 >= t2 * MARGEM and f1 >= f2 * MARGEM and preco > f1), "recuo": bool(f1 < preco < t1),
-            "pct": None if pct is None else round(float(pct), 3),
-            "topo": round(float(t1), 2), "topo_ant": round(float(t2), 2),
+    perna = (topo - preco) / (topo - base) if topo > base else None
+    return {"tend": bool(t1 >= t2 * MARGEM and f1 >= f2 * MARGEM and preco > f1), "recuo": bool(f1 < preco < topo),
+            "queda": round(float((topo - preco) / topo), 4),          # quanto o preço está abaixo do topo
+            "pct": None if perna is None else round(float(perna), 3),  # quanto devolveu da última perna de alta
+            "topo": round(float(topo), 2), "topo_ant": round(float(topo_ant), 2),
             "fundo": round(float(f1), 2), "fundo_ant": round(float(f2), 2),
-            "dt_topo": str(df.index[tp[-1]].date()), "dt_fundo": str(df.index[fd[-1]].date())}
+            "dt_topo": str(df.index[ia].date()), "dt_fundo": str(df.index[fd[-1]].date())}
 
 
 def limpar(x):

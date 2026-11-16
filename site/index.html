@@ -131,8 +131,8 @@ select{width:100%}
           <button class="chip" data-v="any">Um dos dois</button>
           <button class="chip" data-v="both">Os dois</button>
         </div>
-        <div class="row" style="margin-top:8px"><span>Recuo de</span><input type="number" id="pMin" min="0" max="300" step="5" placeholder="0"><span>a</span><input type="number" id="pMax" min="0" max="300" step="5" placeholder="100"><span>% da perna</span></div>
-        <div class="hint">Recuo = preço abaixo do último topo e acima do último fundo. % = quanto devolveu da última subida.</div>
+        <div class="row" style="margin-top:8px"><span>De</span><input type="number" id="pMin" min="0" max="90" step="1" placeholder="0"><span>a</span><input type="number" id="pMax" min="0" max="90" step="1" placeholder="sem limite"><span>% abaixo do topo</span></div>
+        <div class="hint">Recuo = preço abaixo do topo e acima do último fundo. O % é a queda do preço desde o topo. No detalhe de cada ação aparece também quanto ele devolveu da última subida.</div>
       </div>
       <div class="grp">
         <span class="lbl">Setor</span>
@@ -163,8 +163,8 @@ select{width:100%}
         <select id="ordem" aria-label="Ordenar">
           <option value="cap">Maior valor de mercado</option>
           <option value="capAsc">Menor valor de mercado</option>
-          <option value="recD">Menor recuo no diário</option>
-          <option value="recW">Menor recuo no semanal</option>
+          <option value="recD">Mais perto do topo (diário)</option>
+          <option value="recW">Mais perto do topo (semanal)</option>
           <option value="chg">Maior alta no dia</option>
           <option value="tk">Ticker A–Z</option>
         </select>
@@ -178,7 +178,8 @@ select{width:100%}
         <li><b>Lucro:</b> lucro líquido acima de zero em cada um dos 3 últimos anos fiscais e na soma dos últimos 12 meses (balanços enviados à SEC).</li>
         <li><b>Topo e fundo:</b> candle cuja máxima (ou mínima) é maior (ou menor) que a dos 2 candles de cada lado. Só conta quando já há 2 candles depois dele.</li>
         <li><b>Tendência de alta:</b> o último topo pelo menos 1% acima do topo anterior, o último fundo pelo menos 1% acima do fundo anterior, e o preço acima do último fundo. Topos e fundos são lidos alternando, como no gráfico: dois fundos seguidos sem topo no meio contam como um só (o mais baixo).</li>
-        <li><b>Recuo:</b> o preço está abaixo do último topo e acima do último fundo. O % mostra quanto ele devolveu da subida que levou ao último topo (0% = no topo, 100% = de volta ao fundo de onde a subida começou).</li>
+        <li><b>Topo:</b> a máxima mais alta desde o último topo confirmado, contando os candles mais recentes que ainda não confirmaram.</li>
+        <li><b>Recuo:</b> o preço está abaixo do topo e acima do último fundo. O % principal é a queda do preço desde o topo (padrão: a partir de 3%, para não contar fechamento colado na máxima). No detalhe aparece também quanto ele devolveu da última subida (0% = no topo, 100% = de volta ao fundo de onde a subida começou).</li>
         <li><b>Semanal:</b> montado a partir do diário, com a semana fechando na sexta. A semana corrente entra como candle em formação. Mínima ou máxima absurda do Yahoo (mais de 25% fora do corpo do candle) é tratada como erro de dado.</li>
         <li><b>Valor de mercado:</b> número de ações informado à SEC × último preço. Ações da NYSE, Nasdaq e CBOE a partir de US$ 300 mi.</li>
         <li>Dados atualizados todo dia depois do fechamento. Não é recomendação de investimento.</li>
@@ -189,16 +190,17 @@ select{width:100%}
 </main>
 
 <script>
-const PADRAO = {capMin:2, capMax:10, lucro:true, tendD:true, tendW:true, recuo:'any', pMin:'', pMax:'', setor:'', pais:'', busca:'', ordem:'cap'};
+const PADRAO = {capMin:2, capMax:10, lucro:true, tendD:true, tendW:true, recuo:'any', pMin:3, pMax:'', setor:'', pais:'', busca:'', ordem:'cap'};
+const CHAVE = 'filtro-v2';
 let F = carregar(), DADOS = [], vistos = 60;
 const $ = id => document.getElementById(id);
 const fmt = (v, d=2) => v == null ? '–' : v.toLocaleString('pt-BR', {minimumFractionDigits:d, maximumFractionDigits:d});
-const pct = v => v == null ? '–' : (v*100).toLocaleString('pt-BR',{maximumFractionDigits:0}) + '%';
+const pct = (v, d=0) => v == null ? '–' : (v*100).toLocaleString('pt-BR',{minimumFractionDigits:d, maximumFractionDigits:d}) + '%';
 const mi = v => v == null ? '–' : (Math.abs(v) >= 1000 ? fmt(v/1000,1)+' bi' : fmt(v,0)+' mi');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-function carregar(){ try { return {...PADRAO, ...JSON.parse(localStorage.getItem('filtro') || '{}')}; } catch(e){ return {...PADRAO}; } }
-function salvar(){ try { localStorage.setItem('filtro', JSON.stringify(F)); } catch(e){} }
+function carregar(){ try { return {...PADRAO, ...JSON.parse(localStorage.getItem(CHAVE) || '{}')}; } catch(e){ return {...PADRAO}; } }
+function salvar(){ try { localStorage.setItem(CHAVE, JSON.stringify(F)); } catch(e){} }
 
 function passa(a){
   const mn = parseFloat(F.capMin), mx = parseFloat(F.capMax);
@@ -208,7 +210,7 @@ function passa(a){
   if (F.tendD && !(a.D && a.D.tend)) return false;
   if (F.tendW && !(a.W && a.W.tend)) return false;
   const pmn = parseFloat(F.pMin)/100, pmx = parseFloat(F.pMax)/100;
-  const rec = e => e && e.recuo && (isNaN(pmn) || e.pct >= pmn) && (isNaN(pmx) || e.pct <= pmx);
+  const rec = e => e && e.recuo && (isNaN(pmn) || e.queda >= pmn) && (isNaN(pmx) || e.queda <= pmx);
   if (F.recuo === 'D' && !rec(a.D)) return false;
   if (F.recuo === 'W' && !rec(a.W)) return false;
   if (F.recuo === 'any' && !(rec(a.D) || rec(a.W))) return false;
@@ -225,14 +227,14 @@ const ORD = {
   recD:(a,b)=>r(a.D)-r(b.D), recW:(a,b)=>r(a.W)-r(b.W),
   chg:(a,b)=>(b.var1d||0)-(a.var1d||0), tk:(a,b)=>a.t.localeCompare(b.t)
 };
-function r(e){ return e && e.recuo && e.pct != null ? e.pct : 9; }
+function r(e){ return e && e.recuo && e.queda != null ? e.queda : 9; }
 
 function tags(a){
   const t = [];
   for (const [k, nome] of [['D','Diário'],['W','Semanal']]){
     const e = a[k]; if (!e) continue;
     if (e.tend) t.push(`<span class="tag up">${nome}: alta</span>`);
-    if (e.recuo) t.push(`<span class="tag rc">${nome}: recuo ${pct(e.pct)}</span>`);
+    if (e.recuo) t.push(`<span class="tag rc">${nome}: ${pct(e.queda,1)} abaixo do topo</span>`);
   }
   t.push(a.lucro === true ? '<span class="tag up">Lucro 3a+12m</span>' : a.lucro === false ? '<span class="tag no">Sem lucro consecutivo</span>' : '<span class="tag">Lucro: sem dados</span>');
   t.push(`<span class="tag">US$ ${fmt(a.cap, a.cap < 10 ? 2 : 1)} bi</span>`, `<span class="tag">${esc(a.setor)}</span>`);
@@ -241,11 +243,12 @@ function tags(a){
 function caixa(e, nome){
   if (!e || e.topo == null) return `<div class="box"><h3>${nome}</h3>Sem topos e fundos suficientes.</div>`;
   return `<div class="box"><h3>${nome}</h3>
-    <div class="kv"><span>Último topo</span><span>${fmt(e.topo)} <small>(${e.dt_topo.slice(8,10)}/${e.dt_topo.slice(5,7)})</small></span></div>
+    <div class="kv"><span>Topo</span><span>${fmt(e.topo)} <small>(${e.dt_topo.slice(8,10)}/${e.dt_topo.slice(5,7)})</small></span></div>
     <div class="kv"><span>Topo anterior</span><span>${fmt(e.topo_ant)}</span></div>
     <div class="kv"><span>Último fundo</span><span>${fmt(e.fundo)} <small>(${e.dt_fundo.slice(8,10)}/${e.dt_fundo.slice(5,7)})</small></span></div>
     <div class="kv"><span>Fundo anterior</span><span>${fmt(e.fundo_ant)}</span></div>
-    <div class="kv"><span>Recuo da perna</span><span>${e.recuo ? pct(e.pct) : (e.pct < 0 ? 'acima do topo' : 'abaixo do fundo')}</span></div></div>`;
+    <div class="kv"><span>Abaixo do topo</span><span>${e.recuo ? pct(e.queda,1) : (e.queda <= 0 ? 'no topo' : 'abaixo do fundo')}</span></div>
+    <div class="kv"><span>Devolveu da última subida</span><span>${e.recuo && e.pct != null ? pct(e.pct) : '–'}</span></div></div>`;
 }
 function item(a){
   const anos = a.anos.map(([y,v]) => `<div class="kv"><span>${y}</span><span class="${v>0?'pos':'neg'}">${mi(v)}</span></div>`).join('');
